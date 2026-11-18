@@ -1,0 +1,141 @@
+{
+ "arm": "E",
+ "seed": 0,
+ "transitions": 50000,
+ "minutes": 15.0,
+ "step_budget": null,
+ "batch": 128,
+ "lr": 0.001,
+ "steps": 1083,
+ "seconds": 900.3,
+ "threads": 4,
+ "parameters": 1802305,
+ "log": [
+  {
+   "step": 50,
+   "seconds": 62.1,
+   "loss": 0.56702,
+   "illegal": 1.0
+  },
+  {
+   "step": 100,
+   "seconds": 111.6,
+   "loss": 0.14013,
+   "illegal": 1.0
+  },
+  {
+   "step": 150,
+   "seconds": 177.9,
+   "loss": 0.0496,
+   "illegal": 1.0
+  },
+  {
+   "step": 200,
+   "seconds": 222.9,
+   "loss": 0.02271,
+   "illegal": 1.0
+  },
+  {
+   "step": 250,
+   "seconds": 265.5,
+   "loss": 0.01633,
+   "illegal": 1.0
+  },
+  {
+   "step": 300,
+   "seconds": 305.5,
+   "loss": 0.01274,
+   "illegal": 1.0
+  },
+  {
+   "step": 350,
+   "seconds": 345.7,
+   "loss": 0.01153,
+   "illegal": 1.0
+  },
+  {
+   "step": 400,
+   "seconds": 389.5,
+   "loss": 0.00928,
+   "illegal": 1.0
+  },
+  {
+   "step": 450,
+   "seconds": 435.2,
+   "loss": 0.00799,
+   "illegal": 1.0
+  },
+  {
+   "step": 500,
+   "seconds": 476.0,
+   "loss": 0.03504,
+   "illegal": 0.9296875
+  },
+  {
+   "step": 550,
+   "seconds": 513.4,
+   "loss": 0.0501,
+   "illegal": 0.84375
+  },
+  {
+   "step": 600,
+   "seconds": 550.7,
+   "loss": 0.06338,
+   "illegal": 0.6875
+  },
+  {
+   "step": 650,
+   "seconds": 589.3,
+   "loss": 0.06347,
+   "illegal": 0.6875
+  },
+  {
+   "step": 700,
+   "seconds": 623.4,
+   "loss": 0.06929,
+   "illegal": 0.5234375
+  },
+  {
+   "step": 750,
+   "seconds": 662.7,
+   "loss": 0.06246,
+   "illegal": 0.3828125
+  },
+  {
+   "step": 800,
+   "seconds": 697.1,
+   "loss": 0.05768,
+   "illegal": 0.3828125
+  },
+  {
+   "step": 850,
+   "seconds": 732.1,
+   "loss": 0.05835,
+   "illegal": 0.3046875
+  },
+  {
+   "step": 900,
+   "seconds": 766.7,
+   "loss": 0.04943,
+   "illegal": 0.28125
+  },
+  {
+   "step": 950,
+   "seconds": 803.1,
+   "loss": 0.05059,
+   "illegal": 0.3046875
+  },
+  {
+   "step": 1000,
+   "seconds": 838.6,
+   "loss": 0.05466,
+   "illegal": 0.3203125
+  },
+  {
+   "step": 1050,
+   "seconds": 874.5,
+   "loss": 0.04754,
+   "illegal": 0.2421875
+  }
+ ]
+}

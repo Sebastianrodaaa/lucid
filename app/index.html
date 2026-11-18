@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lucid · a dream you can steer</title>
+<style>
+@font-face { font-family: Syne; src: url(/fonts/syne-Syne.ttf); font-weight: 400 800; }
+@font-face { font-family: Plex; src: url(/fonts/ibmplexmono-IBMPlexMono-Regular.ttf); font-weight: 400; }
+@font-face { font-family: Plex; src: url(/fonts/ibmplexmono-IBMPlexMono-Medium.ttf); font-weight: 500; }
+:root {
+  --cab: #120a1a; --panel: #170e21; --line: #2e2240; --dim: #6f6380; --text: #e9e2f2;
+  --mint: #7cffb2; --rose: #e58fa6; --l1: #2a1f3d; --l8: #c9b6ff; --lampoff: #4a4054;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { background: var(--cab); color: var(--text); height: 100%; overflow: hidden; }
+body { font: 13px/1.35 Plex, monospace; display: grid; grid-template-rows: auto 1fr auto auto; }
+.mono, small, .label { font-family: Plex, monospace; }
+.label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 18px 32px 8px; }
+h1 { font: 800 34px/1 Syne, sans-serif; letter-spacing: -.01em; }
+h1 span { font: 400 13px Plex, monospace; color: var(--dim); margin-left: 12px; letter-spacing: 0; }
+.caption { font: 500 17px Syne, sans-serif; color: var(--text); text-align: center; }
+.mode { justify-self: end; text-align: right; }
+.mode b { color: var(--text); font-weight: 500; }
+main { display: flex; justify-content: center; align-items: center; gap: 72px; min-height: 0; padding: 4px 32px; }
+.unit { display: grid; gap: 10px; justify-items: center; }
+.unit .top { width: 100%; display: flex; justify-content: space-between; align-items: baseline; }
+.unit .top b { font: 700 18px Syne, sans-serif; }
+.A .top b { color: var(--rose); } .E .top b { color: var(--mint); }
+.frame { position: relative; width: var(--s); height: var(--s); padding: 22px; }
+.frame canvas.screen { width: 100%; height: 100%; display: block; image-rendering: pixelated; border: 1px solid var(--line); }
+.A canvas.screen { box-shadow: 0 0 36px -14px #e58fa655; } .E canvas.screen { box-shadow: 0 0 40px -12px #7cffb266; }
+.frame svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.hud { stroke: var(--line); stroke-width: 1.5; fill: none; }
+.seg { stroke: #221830; stroke-width: 7; fill: none; stroke-linecap: butt; transition: stroke 40ms; }
+.readout { position: absolute; right: -118px; top: 22px; width: 100px; }
+.readout .big { font: 500 40px/1 Plex, monospace; color: var(--l8); }
+.readout .big small { font-size: 15px; color: var(--dim); }
+.under { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; }
+.lamp { width: 18px; height: 18px; border-radius: 50%; background: var(--lampoff); }
+.lamp.on { background: #fbfff9; } .A .lamp.on { box-shadow: 0 0 14px 3px #e58fa6aa; } .E .lamp.on { box-shadow: 0 0 14px 3px #7cffb2aa; }
+.count { font: 500 22px Plex, monospace; } .count small { font-size: 12px; color: var(--dim); }
+.inset { display: flex; gap: 10px; align-items: center; width: 100%; }
+.inset canvas { width: 96px; height: 96px; image-rendering: pixelated; border: 1px solid var(--line); }
+.strip { padding: 6px 32px 4px; }
+.strip .row { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 10px; margin-top: 3px; }
+.strip canvas { width: 100%; height: 22px; display: block; image-rendering: pixelated; }
+.strip canvas.thin { height: 10px; }
+.legend { display: flex; gap: 2px; align-items: center; justify-content: flex-end; margin-top: 4px; }
+.legend i { width: 16px; height: 8px; display: inline-block; }
+footer { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 12px; padding: 8px 32px 16px; }
+.box { border: 1px solid var(--line); background: var(--panel); padding: 10px 12px; min-width: 0; }
+.box .val { font: 500 24px Plex, monospace; margin-top: 2px; } .box .val small { font-size: 12px; color: var(--dim); }
+.box svg { width: 100%; height: 56px; display: block; margin-top: 4px; }
+.box .pair { display: flex; gap: 18px; }
+.a { color: var(--rose); } .e { color: var(--mint); }
+.ctrl { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+button, select { font: 12px Plex, monospace; background: var(--panel); color: var(--text); border: 1px solid var(--line); padding: 3px 8px; }
+#card { position: fixed; inset: 0; background: #120a1af2; display: none; place-content: center; text-align: center; gap: 28px; }
+#card.show { display: grid; }
+#card h2 { font: 800 76px/1 Syne, sans-serif; } #card h2 span { color: var(--mint); }
+#card .nums { display: flex; gap: 48px; justify-content: center; }
+#card .nums div { border-top: 1px solid var(--line); padding-top: 10px; min-width: 200px; }
+#card .nums b { display: block; font: 500 44px Plex, monospace; color: var(--mint); }
+#card p { color: var(--dim); max-width: 900px; }
+#results { display: none; padding: 8px 32px; overflow: auto; }
+body.results main, body.results .strip, body.results footer { display: none; } body.results #results { display: block; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: right; } th:first-child, td:first-child { text-align: left; }
+th { color: var(--dim); font-weight: 400; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; }
+@media (orientation: portrait) {
+  body { grid-template-rows: auto auto auto auto; }
+  header { grid-template-columns: 1fr; gap: 8px; text-align: center; } .mode { justify-self: center; text-align: center; }
+  main { flex-direction: column; gap: 14px; } .readout { right: -112px; } .unit { gap: 6px; }
+  .inset canvas { width: 72px; height: 72px; }
+  footer { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>lucid<span>a dream you can steer.</span></h1>
+  <div class="caption">neither of these is a game engine. both are neural nets.</div>
+  <div class="mode label" id="mode">connecting</div>
+</header>
+<main>
+  <section class="unit A">
+    <div class="top"><b>one-pass</b><span class="label">baseline A · 1 pass · ~2M params</span></div>
+    <div class="frame"><canvas class="screen" width="32" height="32" id="scrA"></canvas><svg id="hudA"></svg></div>
+    <div class="under"><div class="lamp" id="lampA"></div><div><div class="label">truth check · simulator</div><span id="lampTextA">waiting</span></div>
+      <div class="count" id="cntA">0<small>/100 legal</small></div></div>
+    <div class="inset"><canvas width="32" height="32" id="insA"></canvas><div><div class="label">last random step</div><span id="insTextA">none yet</span></div></div>
+  </section>
+  <section class="unit E">
+    <div class="top"><b>lucid</b><span class="label">looped · proximal target · energy halt</span></div>
+    <div class="frame"><canvas class="screen" width="32" height="32" id="scrE"></canvas><svg id="hudE"></svg>
+      <div class="readout"><div class="label">loops</div><div class="big" id="loops">0<small>/8</small></div><div class="label" style="margin-top:10px">energy</div><div id="energy">-</div></div></div>
+    <div class="under"><div class="lamp" id="lampE"></div><div><div class="label">truth check · simulator</div><span id="lampTextE">waiting</span></div>
+      <div class="count" id="cntE">0<small>/100 legal</small></div></div>
+    <div class="inset"><canvas width="32" height="32" id="insE"></canvas><div><div class="label">last random step</div><span id="insTextE">none yet</span></div></div>
+  </section>
+</main>
+<section class="strip">
+  <div class="row"><span class="label">lucid loops/frame</span><canvas id="film" height="1"></canvas></div>
+  <div class="row"><span class="label">lucid lamp</span><canvas id="filmE" class="thin" height="1"></canvas></div>
+  <div class="row"><span class="label">one-pass lamp</span><canvas id="filmA" class="thin" height="1"></canvas></div>
+  <div class="legend"><span class="label" style="margin-right:6px">loops 1</span><span id="legend"></span><span class="label" style="margin-left:6px">8</span></div>
+</section>
+<footer>
+  <div class="box"><div class="label">bonus column · 2,000 one-step rollouts from 20 real pre-spawn states</div><svg id="hist" viewBox="0 0 400 56" preserveAspectRatio="none"></svg>
+    <div class="label" id="histText">results pending</div></div>
+  <div class="box"><div class="label">legal frames · last 100 steps</div><div class="pair"><div class="val a" id="bA">-</div><div class="val e" id="bE">-</div></div><svg id="sparkLegal" viewBox="0 0 200 56" preserveAspectRatio="none"></svg></div>
+  <div class="box"><div class="label">lucid loops per frame</div><div class="val" id="bLoops">-</div><svg id="sparkLoops" viewBox="0 0 200 56" preserveAspectRatio="none"></svg></div>
+  <div class="box"><div class="label">cpu · ms per frame (this machine)</div><div class="pair"><div class="val a" id="msA">-</div><div class="val e" id="msE">-</div></div>
+    <div class="label" id="session">session spawns: -</div>
+    <div class="ctrl" id="ctrl"></div></div>
+</footer>
+<section id="results"></section>
+<div id="card"><h2>lucid<span>.</span> a dream you can steer.</h2><div class="nums" id="cardNums"></div><p id="cardNote"></p></div>
+<script>
+const q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
+const RAMP = Array.from({length: 8}, (_, i) => mix([0x2a, 0x1f, 0x3d], [0xc9, 0xb6, 0xff], i / 7));
+function mix(a, b, t) { return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join()})`; }
+const LIT = Array.from({length: 8}, (_, i) => mix([0x5a, 0x4a, 0x80], [0xc9, 0xb6, 0xff], i / 7));
+$('legend').innerHTML = RAMP.map(c => `<i style="background:${c}"></i>`).join('');
+const S = innerWidth > innerHeight ? Math.min(innerHeight * .5, 620) : Math.min(innerHeight * .24, innerWidth * .6);
+document.querySelectorAll('.frame').forEach(f => f.style.setProperty('--s', S + 'px'));
+
+// HUD: corner ticks on both screens, an 8-segment ring around lucid's
+function hud(svg, ring) {
+  const w = S, p = 8, L = 18, segs = [];
+  let s = `<path class="hud" d="M${p} ${p + L}V${p}H${p + L}M${w - p - L} ${p}H${w - p}V${p + L}M${w - p} ${w - p - L}V${w - p}H${w - p - L}M${p + L} ${w - p}H${p}V${w - p - L}"/>`;
+  if (ring) {
+    const a = 12, b = w - 12, m = w / 2, g = 6, pts = [[m, a], [b, a], [b, m], [b, b], [m, b], [a, b], [a, m], [a, a], [m, a]];
+    for (let i = 0; i < 8; i++) {
+      const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], dx = Math.sign(x2 - x1) * g, dy = Math.sign(y2 - y1) * g;
+      s += `<path class="seg" id="seg${i}" d="M${x1 + dx} ${y1 + dy}L${x2 - dx} ${y2 - dy}"/>`;
+    }
+  }
+  svg.innerHTML = s;
+}
+hud($('hudA'), false); hud($('hudE'), true);
+
+function paint(canvas, b64) {
+  const raw = atob(b64), ctx = canvas.getContext('2d'), img = ctx.createImageData(32, 32);
+  for (let i = 0; i < 1024; i++) { img.data.set([raw.charCodeAt(3 * i), raw.charCodeAt(3 * i + 1), raw.charCodeAt(3 * i + 2), 255], 4 * i); }
+  ctx.putImageData(img, 0, 0);
+}
+
+const hist = [], last = {A: null, E: null};
+let results = null;
+function showLoop(tick, k) {  // k-th loop of lucid's refinement, 0-based
+  const e = tick.E, i = Math.min(k, e.used - 1);
+  paint($('scrE'), e.loops[i]);
+  for (let s = 0; s < 8; s++) $('seg' + s).style.stroke = s <= i ? LIT[s] : '#221830';
+  $('loops').innerHTML = `${i + 1}<small>/8</small>`;
+  $('energy').textContent = e.energy[i].toFixed(3);
+}
+function show(tick, k) {
+  paint($('scrA'), tick.A.loops[0]);
+  showLoop(tick, k);
+  for (const arm of ['A', 'E']) {
+    const d = tick[arm], done = arm === 'A' || k >= d.used - 1;
+    $('lamp' + arm).classList.toggle('on', done && d.lamp);
+    $('lampText' + arm).textContent = !done ? 'looping' : d.lamp ? `legal · 1 of ${d.futures} possible futures` : `not a possible future (${d.futures} exist)`;
+    $('cnt' + arm).innerHTML = `${d.legal100}<small>/${d.window} legal</small>`;
+    $('ms' + arm).innerHTML = `${d.ms.toFixed(1)}<small> ms</small>`;
+    if (d.futures > 1 && done) last[arm] = {t: tick.t, pic: d.loops[d.used - 1], ok: d.lamp, n: d.futures};
+    if (last[arm]) { paint($('ins' + arm), last[arm].pic); $('insText' + arm).textContent = `t ${last[arm].t} · ${last[arm].n} futures · ${last[arm].ok ? 'legal' : 'illegal'}`; }
+  }
+  $('bA').innerHTML = `${tick.A.legal100}<small> one-pass</small>`; $('bE').innerHTML = `${tick.E.legal100}<small> lucid</small>`;
+}
+function record(tick) { hist.push(tick); if (hist.length > 600) hist.shift(); draw(); }
+function draw() {
+  const film = $('film'), n = Math.max(60, Math.round(film.clientWidth / 9)), view = hist.slice(-n);
+  for (const [id, f] of [['film', t => RAMP[t.E.used - 1]], ['filmE', t => t.E.lamp ? '#f4fff8' : '#4a4054'], ['filmA', t => t.A.lamp ? '#f4fff8' : '#4a4054']]) {
+    const c = $(id); c.width = n; const ctx = c.getContext('2d'); ctx.clearRect(0, 0, n, 1);
+    view.forEach((t, i) => { ctx.fillStyle = f(t); ctx.fillRect(n - view.length + i, 0, 1, 1); });
+  }
+  const line = (vals, max, color) => 'M' + vals.map((v, i) => `${(i / Math.max(1, vals.length - 1) * 200).toFixed(1)} ${(54 - v / max * 50).toFixed(1)}`).join('L');
+  const w = hist.slice(-200);
+  $('sparkLegal').innerHTML = `<path d="${line(w.map(t => t.A.legal100 / t.A.window * 100), 100)}" stroke="#e58fa6" fill="none"/><path d="${line(w.map(t => t.E.legal100 / t.E.window * 100), 100)}" stroke="#7cffb2" fill="none"/>`;
+  $('sparkLoops').innerHTML = `<path d="${line(w.map(t => t.E.used), 8)}" stroke="#c9b6ff" fill="none"/>`;
+  const used = w.map(t => t.E.used), spawns = hist.filter(t => t.E.futures > 1);
+  $('bLoops').innerHTML = `${(used.reduce((a, b) => a + b, 0) / used.length).toFixed(2)}<small> mean · quiet ${meanOf(w.filter(t => t.E.futures === 1))} · random ${meanOf(w.filter(t => t.E.futures > 1))}</small>`;
+  const cols = [0, 0, 0, 0]; spawns.forEach(t => t.E.spawn !== null && cols[t.E.spawn]++);
+  $('session').textContent = `session bonus columns (lucid): ${cols.join(' · ')}`;
+}
+function meanOf(ts) { return ts.length ? (ts.reduce((a, t) => a + t.E.used, 0) / ts.length).toFixed(1) : '-'; }
+
+function drawHist(frac) {  // real 2,000-rollout histogram from results/, filling as `frac` goes 0 -> 1
+  if (!results || !results.hist) return;
+  const H = results.hist, n = H.rollouts, shown = Math.round(n * frac), bars = [];
+  const scale = v => v / n * shown;
+  const groups = [['E', '#7cffb2'], ['A', '#e58fa6']];
+  const bins = ['col 1', 'col 2', 'col 3', 'col 4', 'illegal'];
+  bins.forEach((b, i) => groups.forEach(([arm, c], j) => {
+    const v = scale(H[arm][i]) / n, h = Math.min(1, v / .5) * 46, x = i * 80 + 14 + j * 26;
+    bars.push(`<rect x="${x}" y="${50 - h}" width="22" height="${h}" fill="${c}" opacity="${arm === 'E' ? 1 : .8}"/>`);
+  }));
+  const sim = 50 - (.25 / .5) * 46 * frac;
+  bars.push(`<path d="M0 ${sim}H320" stroke="#f4fff8" stroke-dasharray="3 3"/>`);
+  bins.forEach((b, i) => bars.push(`<text x="${i * 80 + 14}" y="56" fill="#6f6380" font-size="7" font-family="Plex">${b}</text>`));
+  $('hist').innerHTML = bars.join('');
+  $('histText').innerHTML = `<span class="e">lucid</span> · <span class="a">one-pass</span> · dashed = simulator 25% · drawn ${shown}/${n} · TV lucid ${H.tvE} one-pass ${H.tvA}`;
+}
+
+function card(show) {
+  $('card').classList.toggle('show', show);
+  if (!results || !results.end) { $('cardNums').innerHTML = '<div>results pending</div>'; return; }
+  const e = results.end;
+  $('cardNums').innerHTML = e.nums.map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
+  $('cardNote').textContent = e.note;
+}
+
+function resultsView() {
+  document.body.classList.add('results');
+  if (!results || !results.rows) { $('results').textContent = 'no results yet'; return; }
+  const r = results;
+  $('results').innerHTML = `<div class="label" style="margin:8px 0">${r.note}</div><table><tr>${r.head.map(h => `<th>${h}</th>`).join('')}</tr>` +
+    r.rows.map(row => `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') + '</table>';
+}
+
+async function boot() {
+  try { results = await (await fetch('/api/results')).json(); } catch (e) { results = null; }
+  if (q.get('view') === 'results') return resultsView();
+  if (q.has('replay')) return replay(q.get('replay'));
+  live();
+}
+
+function live() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  let fps = 15, key = 'none';
+  drawHist(1);
+  ws.onmessage = m => {
+    const d = JSON.parse(m.data);
+    if (d.hello) { fps = d.fps; $('mode').innerHTML = `<b>live</b> · websocket · ${fps} ticks/s · τ ${d.tau}<br>arrow keys steer · r wakes into a new real start`; return; }
+    record(d);
+    for (let k = 0; k < d.E.used; k++) setTimeout(() => show(d, k), k * 1000 / fps / d.E.used);
+  };
+  ws.onclose = () => $('mode').innerHTML = '<b>disconnected</b>';
+  const send = k => { if (k !== key) { key = k; ws.send(JSON.stringify({key: k})); } };
+  addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') send('left'); else if (e.key === 'ArrowRight') send('right');
+    else if (e.key === 'r') { hist.length = 0; ws.send(JSON.stringify({reset: true})); }
+  });
+  addEventListener('keyup', e => (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && send('none'));
+  $('ctrl').innerHTML = '<button id="res">results</button>'; $('res').onclick = () => location.search = '?view=results';
+}
+
+async function replay(name) {
+  const log = await (await fetch('/api/replay/' + name)).json(), ticks = log.ticks;
+  let i = 0, speed = 1, playing = true, timer = null;
+  const label = () => $('mode').innerHTML = `<b>replay</b> · ${name}.json.gz · ${speed === 1 ? '1× real speed' : speed + '× real speed (slowed)'} · ${log.fps} ticks/s<br>t ${ticks[Math.min(i, ticks.length - 1)].t}/${ticks.length} · recorded scripted player`;
+  $('ctrl').innerHTML = '<button id="pp">pause</button><select id="sp"><option value="1">1× real</option><option value="0.5">0.5× slowed</option><option value="0.25">0.25× slowed</option></select>';
+  $('sp').onchange = e => { speed = +e.target.value; label(); };
+  $('pp').onclick = () => { playing = !playing; $('pp').textContent = playing ? 'pause' : 'play'; if (playing) step(); };
+  function step() {
+    if (!playing) return;
+    if (i >= ticks.length) { card(true); return; }
+    const t = ticks[i++]; record(t); label(); drawHist(i / ticks.length);
+    const dt = 1000 / log.fps / speed;
+    for (let k = 0; k < t.E.used; k++) setTimeout(() => show(t, k), k * dt / t.E.used);
+    timer = setTimeout(step, dt);
+  }
+  // film mode: record_demo.py drives frames deterministically instead of timers
+  window.captureAt = (tick, sub, subs, slow = 1) => {
+    if (tick === 'card') { card(true); return; }
+    card(false); speed = slow; i = tick + 1;
+    hist.splice(0, hist.length, ...ticks.slice(Math.max(0, tick - 599), tick + 1)); draw(); label();
+    drawHist(Math.min(1, (tick + 1) / ticks.length));
+    show(ticks[tick], Math.floor(sub / subs * ticks[tick].E.used));
+  };
+  window.ticks = ticks.length; window.fps = log.fps;
+  if (q.has('film')) { playing = false; window.captureReady = true; return; }
+  step();
+}
+boot();
+</script>
+</body>
+</html>
