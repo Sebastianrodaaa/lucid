@@ -256,7 +256,7 @@ async function replay(name) {
   const label = () => $('mode').innerHTML = `<b>replay</b> · ${name}.json.gz · ${speed === 1 ? '1× real speed' : speed + '× real speed (slowed)'} · ${log.fps} ticks/s<br>t ${ticks[Math.min(i, ticks.length - 1)].t}/${ticks.length} · recorded scripted player`;
   $('ctrl').innerHTML = '<button id="pp">pause</button><select id="sp"><option value="1">1× real</option><option value="0.5">0.5× slowed</option><option value="0.25">0.25× slowed</option></select>';
   $('sp').onchange = e => { speed = +e.target.value; label(); };
-  $('pp').onclick = () => { playing = !playing; $('pp').textContent = playing ? 'pause' : 'play'; if (playing) step(); };
+  $('pp').onclick = () => { playing = !playing; $('pp').textContent = playing ? 'pause' : 'play'; clearTimeout(timer); if (playing) step(); };  // one pending tick at most
   function step() {
     if (!playing) return;
     if (i >= ticks.length) { card(true); return; }
