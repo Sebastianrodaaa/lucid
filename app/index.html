@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>lucid · a dream you can steer</title>
 <style>
@@ -225,7 +226,7 @@ function resultsView() {
 
 async function boot() {
   try { results = await (await fetch('/api/results')).json(); } catch (e) { results = null; }
-  if (q.get('view') === 'results') return resultsView();
+  if (q.get('view') === 'results') { $('mode').innerHTML = '<b>results</b> · results/study-*.json'; return resultsView(); }
   if (q.has('replay')) return replay(q.get('replay').replace(/[^\w-]/g, ''));  // the name lands in innerHTML: keep it a plain file stem
   live();
 }
