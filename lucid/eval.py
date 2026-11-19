@@ -100,8 +100,9 @@ def spawn_tv(model, arm, data, count, states=20, draws=100, seed=0):
             frames = frames[used - 1, torch.arange(draws)]
         cand = data["futures"][data["owner"][i]][:count]
         match = (frames[:, None] == cand).flatten(2).all(2)
-        hist[:count] += match.sum(0).numpy()
-        hist[count] += (~match.any(1)).sum().item()
+        hit = match.any(1)  # a draw counts once; two outcomes can render alike when the ball covers the bonus cell
+        hist[:count] += np.bincount(match.float().argmax(1)[hit].numpy(), minlength=count)
+        hist[count] += (~hit).sum().item()
     p = hist / hist.sum()
     tv = 0.5 * (np.abs(p[:count] - 1 / count).sum() + p[count])
     out = dict(rollouts=int(hist.sum()), tv=round(float(tv), 4), hist=hist.astype(int).tolist())

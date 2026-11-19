@@ -60,9 +60,10 @@ button, select { font: 12px Plex, monospace; background: var(--panel); color: va
 #card { position: fixed; inset: 0; background: #120a1af2; display: none; place-content: center; text-align: center; gap: 28px; }
 #card.show { display: grid; }
 #card h2 { font: 800 76px/1 Syne, sans-serif; } #card h2 span { color: var(--mint); }
-#card .nums { display: flex; gap: 48px; justify-content: center; }
+#card .nums { display: flex; flex-wrap: wrap; gap: 48px; justify-content: center; padding: 0 40px; }
 #card .nums div { border-top: 1px solid var(--line); padding-top: 10px; min-width: 200px; }
-#card .nums b { display: block; font: 500 44px Plex, monospace; color: var(--mint); }
+#card .nums b { display: block; font: 500 clamp(32px, 3.4vw, 56px) Plex, monospace; color: var(--mint); }
+#card .nums b small { display: block; font-size: 15px; color: var(--dim); margin-top: 6px; }
 #card p { color: var(--dim); max-width: 900px; }
 #results { display: none; padding: 8px 32px; overflow: auto; }
 body.results main, body.results .strip, body.results footer { display: none; } body.results #results { display: block; }
@@ -210,7 +211,7 @@ function card(show) {
   $('card').classList.toggle('show', show);
   if (!results || !results.end) { $('cardNums').innerHTML = '<div>results pending</div>'; return; }
   const e = results.end;
-  $('cardNums').innerHTML = e.nums.map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
+  $('cardNums').innerHTML = e.nums.map(([k, v]) => `<div><span class="label">${k}</span><b>${String(v).replace(/ \((.*)\)$/, '<small>seed range $1</small>')}</b></div>`).join('');
   $('cardNote').textContent = e.note;
 }
 
@@ -270,9 +271,13 @@ async function replay(name) {
     card(false); speed = slow; i = tick + 1;
     hist.splice(0, hist.length, ...ticks.slice(Math.max(0, tick - 599), tick + 1)); draw(); label();
     drawHist(Math.min(1, (tick + 1) / ticks.length));
+    last.A = last.E = null;  // the inset shows the last random step before this tick, not one from a later pass
+    for (const t of ticks.slice(0, tick)) for (const arm of ['A', 'E'])
+      if (t[arm].futures > 1) last[arm] = {t: t.t, pic: t[arm].loops[t[arm].used - 1], ok: t[arm].lamp, n: t[arm].futures};
     show(ticks[tick], Math.floor(sub / subs * ticks[tick].E.used));
   };
   window.ticks = ticks.length; window.fps = log.fps;
+  window.firstLegalSpawn = ticks.findIndex(t => t.E.futures === 8 && t.E.lamp);
   if (q.has('film')) { playing = false; window.captureReady = true; return; }
   step();
 }

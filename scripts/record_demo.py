@@ -64,17 +64,21 @@ def main():
                 ticks = min(page.evaluate("window.ticks"), int(a.seconds * page.evaluate("window.fps")))
                 film(page, MEDIA / f"lucid-{name}.mp4", ticks)
                 print("wrote", MEDIA / f"lucid-{name}.mp4", ticks, "ticks", flush=True)
-                if name == "16x9":
+                if name == "16x9":  # stills: a mid-play frame, and the first bonus spawn lucid dreams legally
                     page.evaluate("captureAt(40, 3, 4)")
-                    page.screenshot(path=str(MEDIA / "hero-color.png"))
+                    page.screenshot(path=str(MEDIA / "hero.png"))
+                    spawn = page.evaluate("window.firstLegalSpawn")
+                    page.evaluate(f"captureAt({spawn}, 3, 4)")
+                    page.screenshot(path=str(MEDIA / "smear.png"))
                 page.close()
             page = browser.new_page(viewport=dict(width=1920, height=1080))
             page.goto(f"http://127.0.0.1:{a.port}/?view=results")
             page.wait_for_timeout(800)
-            page.screenshot(path=str(MEDIA / "results-color.png"))
+            page.screenshot(path=str(MEDIA / "results.png"))
             browser.close()
     finally:
         server.terminate()
+    subprocess.run([sys.executable, str(ROOT / "scripts/plots.py")] + [str(MEDIA / f"{n}.png") for n in ("hero", "smear", "results")], check=True)
     # README GIF: first 12 s of the 16:9 film, grayscale, 960 px, 15 fps (one frame per tick: still real speed)
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-t", "12", "-i", str(MEDIA / "lucid-16x9.mp4"), "-vf",
                     "fps=15,scale=960:-1:flags=lanczos,format=gray,split[a][b];[a]palettegen=max_colors=32[p];[b][p]paletteuse=dither=bayer",

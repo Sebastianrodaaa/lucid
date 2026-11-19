@@ -109,10 +109,18 @@ def main():
     torch.set_num_threads(4)
     models = {"A": load_model(a.onepass), "E": load_model(a.lucid)}
     if a.record:
-        session, rng, ticks = Session(models, a.seed), np.random.default_rng(a.seed), []
-        for _ in range(a.ticks):  # the player steers by the simulator state that follows lucid's dream
-            ticks.append(session.tick(game.scripted(session.sides["E"].state, rng)))
-        meta = dict(fps=HZ, seed=a.seed, tau=TAU, player="scripted, eps 0.1", palettes=PALETTES,
+        for seed in range(a.seed, a.seed + 200):  # first seed where lucid dreams a legal bonus spawn within ~3 s (ticks 8-45)
+            session, rng, ticks = Session(models, seed), np.random.default_rng(seed), []
+            for t in range(a.ticks):  # the player steers by the simulator state that follows lucid's dream
+                if t and t % 100 == 0:  # same protocol as the closed-loop metric: a fresh real start every 100 steps
+                    session.reset()
+                ticks.append(session.tick(game.scripted(session.sides["E"].state, rng)))
+                if t == 45 and not any(x["E"]["futures"] == 8 and x["E"]["lamp"] for x in ticks[8:]):
+                    break
+            if len(ticks) == a.ticks:
+                break
+        a.seed = seed
+        meta = dict(fps=HZ, seed=a.seed, tau=TAU, player="scripted, eps 0.1", restart="new real start every 100 ticks", selection="first seed from --seed where lucid dreams a legal bonus spawn in ticks 8-45 (a chosen example; rates over all rollouts are in results/study-*.json)", palettes=PALETTES,
                     checkpoints={"A": Path(a.onepass).name, "E": Path(a.lucid).name}, ticks=ticks)
         out = ROOT / "results" / f"{a.record}.json.gz"
         out.write_bytes(gzip.compress(json.dumps(meta).encode(), mtime=0))

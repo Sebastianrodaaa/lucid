@@ -8,7 +8,7 @@ A looped world model trained toward the nearest legal future, with a learned ene
 
 **Data.** Real transitions from the simulator: half the episodes use a scripted player that tracks the ball (random action with probability 0.1), half a uniformly random player; 200-step episodes from random brick layouts. Each sample is (previous frame, current frame, action, next frame) plus, for random steps, all legal next frames. Training seeds use simulator seed 1000 + seed. The test set is a separate 40,000-transition draw with simulator seed 7777.
 
-**Model** (`lucid/model.py`). One refiner for every learned arm, 1,802,305 parameters: two 3x3 convolutions over (previous, current, draft) one-hot frames, 4x4 patches into 64 tokens of width 256, a 2-layer pre-norm transformer encoder shared by every loop, a linear head that adds a logit residual to the draft, and a small energy head (on detached features, so it does not change the trunk) that predicts whether the frame is illegal. Loop k feeds the logits of loop k-1 back in as the draft. Pass 1 is seeded with a Gaussian noise draft, so different seeds can settle on different legal futures.
+**Model** (`lucid/model.py`). One refiner for every learned arm, 1,802,305 parameters: two 3x3 convolutions over (previous, current, draft) one-hot frames, 4x4 patches into 64 tokens of width 256, a 2-layer pre-norm transformer encoder shared by every loop, a linear head that outputs the next-frame logits, and a small energy head (on detached features, so it does not change the trunk) that predicts whether the frame is illegal. Loop k feeds the logits of loop k-1 back in as the draft. Pass 1 is seeded with a Gaussian noise draft, so different seeds can settle on different legal futures.
 
 **Arms** (`lucid/train.py`), all at the same parameter count and the same data:
 
@@ -24,4 +24,92 @@ A looped world model trained toward the nearest legal future, with a learned ene
 ## Results
 
 <!-- results:start -->
+Run `study`, seeds 0, 1, 2; test set 40,000 real transitions (1,902 random steps). Mean over seeds, (min-max) across seeds.
+
+| arm | one-step legal | legal on random steps | closed-loop legal | bonus column TV | mean loops | ms/frame | FPS |
+|---|---|---|---|---|---|---|---|
+| A one-pass | 0.948 (0.943-0.950) | 0.015 (0.012-0.016) | 0.319 (0.300-0.339) | 0.950 (0.950-0.950) | 1.00 (1.00-1.00) | 2.4 (2.0-2.8) | 394 (266-505) |
+| B nearest-of-16 | 0.977 (0.977-0.977) | 0.596 (0.588-0.602) | 0.684 (0.651-0.729) | 0.436 (0.415-0.472) | 1.00 (1.00-1.00) | 2.0 (2.0-2.0) | 485 (468-494) |
+| C looped std, depth 1 | 0.939 (0.922-0.948) | 0.017 (0.015-0.019) | 0.300 (0.237-0.354) | 0.933 (0.900-0.950) | 1.00 (1.00-1.00) | 2.1 (2.0-2.1) | 459 (409-498) |
+| C looped std, depth 8 | 0.946 (0.939-0.950) | 0.012 (0.011-0.013) | 0.317 (0.275-0.363) | 0.933 (0.900-0.950) | 8.00 (8.00-8.00) | 15.9 (15.7-16.3) | 59 (54-63) |
+| D proximal, fixed depth 1 | 0.988 (0.975-0.994) | 0.931 (0.884-0.961) | 0.809 (0.643-0.923) | 0.432 (0.285-0.555) | 1.00 (1.00-1.00) | 2.0 (2.0-2.1) | 474 (432-500) |
+| D proximal, fixed depth 2 | 0.994 (0.989-0.997) | 0.982 (0.973-0.987) | 0.867 (0.766-0.947) | - | 2.00 (2.00-2.00) | 4.2 (3.9-4.8) | 216 (152-250) |
+| D proximal, fixed depth 4 | 0.995 (0.990-0.997) | 0.983 (0.976-0.987) | 0.885 (0.814-0.951) | - | 4.00 (4.00-4.00) | 7.9 (7.9-8.0) | 114 (100-125) |
+| D proximal, fixed depth 8 | 0.995 (0.991-0.997) | 0.983 (0.976-0.987) | 0.895 (0.843-0.951) | - | 8.00 (8.00-8.00) | 16.1 (15.5-16.7) | 60 (57-63) |
+| E lucid, energy halt | 0.988 (0.976-0.994) | 0.941 (0.903-0.962) | 0.809 (0.643-0.923) | 0.432 (0.285-0.555) | 1.01 (1.00-1.01) | 2.5 (2.1-3.4) | 385 (261-469) |
+| F simulator oracle | 1.000 | 1.000 | 1.000 | 0.000 | - | 0.015 (0.014-0.017) | 62464 (57228-66612) |
+
+| seed | lucid illegal at halt | best fixed depth illegal at same mean loops | mean loops | Spearman loops vs futures |
+|---|---|---|---|---|
+| 0 | 0.0237 | 0.0245 | 1.01 | 0.1019 |
+| 1 | 0.0060 | 0.0061 | 1.00 | 0.0674 |
+| 2 | 0.0060 | 0.0064 | 1.00 | 0.1301 |
 <!-- results:end -->
+
+Every learned arm: 5,000 steps of batch 128 (a quarter of each batch drawn from random steps), Adam 1e-3, on 500,000 real transitions per seed (simulator seeds 1000, 1001, 1002). Two 4-thread jobs side by side on an 8 vCPU box with no GPU; wall time per run was 31 to 37 min (A), 118 to 138 min (B), 67 to 76 min (C), 70 to 92 min (E). Training logs: `results/train/`. Raw metrics with 95% bootstrap intervals for every seed and arm: `results/study-{0,1,2}.json`.
+
+### The hypothesis, clause by clause
+
+Pre-registered rule: the hypothesis fails if (1) or (4) misses in 2 of 3 seeds. **(4) misses in 3 of 3 seeds, so the hypothesis fails.**
+
+| clause | target | seed 0 | seed 1 | seed 2 | verdict |
+|---|---|---|---|---|---|
+| (1a) lucid one-step legal | at least 0.90 | 0.976 | 0.994 | 0.994 | pass |
+| (1b) lucid closed-loop legal, 100 steps | at least 0.80 | 0.643 | 0.923 | 0.862 | pass in 2 of 3 |
+| (1c) one-pass legal on random steps | below 0.40 | 0.016 | 0.012 | 0.015 | pass |
+| (2) lucid vs nearest-of-16, legal | match or beat | 0.976 vs 0.977 | 0.994 vs 0.977 | 0.994 vs 0.977 | pass in 2 of 3 (seed 0 within CI) |
+| (2) ... at equal or lower latency | ms/frame | 2.14 vs 2.05 | 3.36 vs 1.99 | 2.08 vs 2.00 | fail: lucid is slower on every seed |
+| (3) bonus column TV over 2,000 rollouts | at most 0.10 | 0.456 | 0.555 | 0.286 | fail: partial mode collapse |
+| (4a) Spearman loops vs legal futures | at least 0.5 | 0.10 | 0.07 | 0.13 | fail |
+| (4b) illegal at halt vs best fixed depth, same mean loops | at least 10% fewer | 0.0237 vs 0.0245 | 0.0060 vs 0.0061 | 0.0060 vs 0.0064 | fail (3%, 2%, 6% fewer) |
+
+Latency is batch 1, 4 threads, median ms per frame, measured on this box after training finished, with nothing else running. All arms are far above the 15 FPS play target.
+
+### What worked: the proximal target
+
+The same looped refiner trained on the stored next frame (arm C) gets 1.2% to 1.7% of random steps legal at any depth, the same as the one-pass model: it averages the 8 or 16 futures into a smear that matches none of them. Trained toward the nearest legal future (arm D), it gets 88% to 96% at depth 1 and 97% to 99% at depth 2 or more. Nearest-of-16 (B) sits in between at about 60%. This is the largest effect in the study and it holds on all three seeds.
+
+Looping also helps once the target is right. Closed-loop legality rises from 0.809 at depth 1 to 0.867 at depth 2 and 0.895 at depth 8 (means over seeds). Almost all of the gain comes from the second loop.
+
+### The Halt: adaptive halting, tested
+
+The claim under test (Adaptive compute in latent world models, arXiv 2607.10203) is that no trained router beat fixed depth schedules. **At the pre-registered threshold, lucid's energy halting confirms that claim.** The energy head is confident almost everywhere: sigmoid(energy) stays below 0.5 on nearly every frame, so lucid stops after one loop (mean 1.01 loops on all frames, 1.02 to 1.10 on random steps). It spends barely more compute on frames with more legal futures (Spearman 0.07 to 0.13), and at the same mean loops it is 2% to 6% better than fixed depth, short of the 10% bar. In practice the pre-registered lucid is the depth-1 proximal model with a small overhead for the energy head.
+
+Exploratory, not pre-registered: lowering the threshold changes the picture somewhat (`docs/screenshots/halt.png`). At tau 0.02 the halting model uses 1.69, 1.14 and 1.15 mean loops with 0.0109, 0.0042 and 0.0040 illegal frames. At the same mean loops, linear interpolation between fixed depths 1 and 2 gives 0.0156, 0.0057 and 0.0060, so halting has 26% to 33% fewer illegal frames. But the threshold was picked after looking at the test set, and fixed depth 2 is still cheap (4 ms/frame) and better in absolute terms (0.0115, 0.0034, 0.0034). So this is a hint that the energy ranks frames usefully at low thresholds, not evidence against the published claim.
+
+### The spawn distribution
+
+When a brick breaks, the simulator draws one of 8 bonuses uniformly. Over 2,000 rollouts from 20 real pre-bonus states with 100 noise seeds each, lucid's bonuses are legal 89% to 94% of the time, but they land on only 3 or 4 of the 8 outcomes (for example seed 1: 1,445 of 2,000 on one outcome). The noise draft chooses among a few legal futures, not all of them, so the TV from uniform is 0.29 to 0.56. Nearest-of-16 spreads across all 8 outcomes but is illegal 42% to 47% of the time. Neither reproduces the simulator's distribution.
+
+### Smoke runs (all reported)
+
+The smoke config (1 seed, 50,000 transitions, A and E, 30 min each, two 4-thread jobs side by side) was timed before the study. It used the first model version, which added the noise draft straight into the output logits. One-pass reached 0.888 one-step legal (0.059 on 8-outcome steps). lucid v1 reached 0.021 at depth 8, because every loop first had to cancel the noise it was given. The fix was to treat the draft as input only and let the head output the logits. A 15-minute check of lucid v2 reached 0.728 (0.000 on random steps). A 10-minute nearest-of-16 check reached 0.872. These smoke numbers come from a 4,000-transition diagnostic set, not the 40,000-transition test set. An earlier smoke dataset also had a bug: the first transition of each episode used the post-step frame as its "previous" frame. It was fixed before the study. From the smoke throughput, the full plan was projected at about 6 h of wall time, well under the 48 h cut-off, so no seed or grid cut was made. It took 9.3 h of training wall time plus about 1.2 h of evaluation, because nearest-of-16 with a quarter of each batch on random steps is about 3.7x slower per step than one-pass.
+
+### The demo session
+
+`results/demo.json.gz` is one real session of the released seed-0 checkpoints: 450 ticks at 15 Hz, scripted player, a fresh real start every 100 ticks (the same protocol as the closed-loop metric). The seed is the first one from 0 where lucid dreams a legal bonus within ticks 8 to 45, so it is a chosen example (seed 1). Over its 450 ticks lucid's lamp is lit on 58% of frames and one-pass on 35%. Both are lower than the 100-step closed-loop metric, because within each 100-tick segment the dream drifts away after a few illegal frames.
+
+## Limitations
+
+- One small game, one model size (1.8M parameters), 5,000 training steps per arm. The seed-0 lucid model is clearly weaker than seeds 1 and 2 (closed loop 0.64 vs 0.86 to 0.92). Longer training may change every comparison here.
+- "Legal" means exact match to one of the simulator's futures. It is strict, which is the point, but one wrong cell anywhere counts as illegal.
+- Closed-loop play compounds errors. Once a dreamed frame is illegal, the simulator follows its nearest legal future, and the dream and the judge can drift apart. Beyond about 100 steps, legality decays in both models.
+- Arm D shares E's trunk instead of a separate run (the energy head sees detached features, so the trunk's gradients are the same). B is our re-implementation of nearest-of-m, not the authors' code.
+- The energy head is trained to predict illegality with a 0.1 loss weight on detached features. Other energy designs (fixed-point residuals, contrastive energies) were not tried.
+- Latency comes from one 8 vCPU box at 4 threads. FPS varies with CPU load: the halting arm's mean ms is inflated by a few slow frames.
+- Two outcomes can render identically when the ball covers the bonus cell. Legality handles this, and the spawn histogram counts each draw once (the first seed-0 evaluation double-counted such draws and was rerun).
+
+## Related work
+
+- **Looped World Models** (arXiv 2606.18208): looped latent refinement with adaptive depth on deterministic targets. lucid keeps the loop but changes the target.
+- **Nearest-of-m one-step world models** (arXiv 2611.11887): one-step IMLE against mode averaging. Arm B re-implements it with m = 16.
+- **Proximal Targets** (arXiv 2611.22737): nearest-correct-answer targets for looped refiners on puzzles. lucid applies the idea to stochastic dynamics, with the simulator enumerating the correct answers.
+- **Energy-Based Reasoners** (arXiv 2611.08977): energy-guided loops and stopping for reasoning. lucid's energy head is a much simpler learned stop signal.
+- **Adaptive compute in latent world models** (arXiv 2607.10203): no trained router beat fixed depth schedules. Arm E is a direct test; at its pre-registered threshold it agrees.
+- **GameNGen, DIAMOND** (arXiv 2405.12399) and **Neural Game Engine** (arXiv 2003.10520): playable neural games, on GPU diffusion or deterministic games. lucid is far smaller and runs on a CPU.
+
+No affiliation with any of these authors. Details in `INSPIRATIONS.md`.
+
+## Social summary
+
+We trained a 1.8M-parameter looped world model on a small brick game, on a CPU, toward the nearest legal next frame instead of a stored one. That target was the big win: frames with a random event (where a bonus falls, where the ball respawns) went from about 1.5% exactly legal to 90% to 99%, depending on seed and loop count, and the model plays at hundreds of frames per second. The rest of the hypothesis failed. The learned energy almost always stopped after one loop, which agrees with the published result that adaptive halting does not beat fixed depth. The dreamed bonuses were legal but piled onto 3 or 4 of the 8 possible outcomes, and long rollouts still drift. Code, logs, checkpoints and every run, negatives included, are in the repo.

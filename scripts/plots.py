@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from lucid.eval import TAU, studies  # noqa: E402
+from lucid.eval import studies  # noqa: E402
 
 SHOTS, ART = ROOT / "docs/screenshots", ROOT / "docs/art"
 PLEX = str(ROOT / "app/fonts/ibmplexmono-IBMPlexMono-Regular.ttf")
@@ -47,40 +47,49 @@ def bw(src, dst, width=1280):
     im.save(dst, optimize=True)
 
 
-def dots(ax_w, ax_h):
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    plt.rcParams.update({"font.family": "monospace", "font.size": 9, "axes.edgecolor": "white", "axes.labelcolor": "white",
-                         "xtick.color": "white", "ytick.color": "white", "text.color": "white", "axes.facecolor": "black",
-                         "figure.facecolor": "black", "axes.spines.top": False, "axes.spines.right": False})
-    return plt.subplots(figsize=(ax_w, ax_h), dpi=160)
+def chart(w, h, xlim, ylim, xlabel, ylabel, title):
+    """A black canvas with white axes; returns the image, a drawer and a data-to-pixel map."""
+    img = Image.new("L", (w, h), 0)
+    d, f = ImageDraw.Draw(img), ImageFont.truetype(PLEX, 15)
+    L, R, T, B = 90, w - 30, 50, h - 60
+    d.line([(L, T), (L, B), (R, B)], fill=255)
+    d.text((L, 16), title, font=f, fill=200)
+    d.text(((L + R) / 2, h - 22), xlabel, font=f, fill=200, anchor="mm")
+    d.text((14, T - 18), ylabel, font=f, fill=200, anchor="lm")
+    xy = lambda x, y: (L + (x - xlim[0]) / (xlim[1] - xlim[0]) * (R - L), B - (y - ylim[0]) / (ylim[1] - ylim[0]) * (B - T))
+    for k in range(5):
+        y = ylim[0] + k * (ylim[1] - ylim[0]) / 4
+        d.text((L - 8, xy(0, y)[1] if xlim[0] == 0 else xy(xlim[0], y)[1]), f"{y:.3g}", font=f, fill=200, anchor="rm")
+    return img, d, f, xy
+
+
+def dot(d, p, filled, r=5):
+    d.ellipse([p[0] - r, p[1] - r, p[0] + r, p[1] + r], fill=255 if filled else 0, outline=255)
 
 
 def plots():
     prefix, runs = studies()
     if not runs:
         return
-    fig, ax = dots(6.4, 3.4)
-    for r in runs:
-        e = r["arms"].get("E")
-        if not e:
-            continue
-        sw = e["tau_sweep"]
-        fixed = [1 - e["depths"][str(k)]["legal"][0] for k in range(1, 9)]
-        ax.plot(range(1, 9), fixed, "o", color="white", ms=4, mfc="none")
-        ax.plot([x["mean_loops"] for x in sw], [x["illegal"] for x in sw], "o", color="white", ms=4)
-        h = next(x for x in sw if x["tau"] == TAU)
-        ax.annotate(f"seed {r['seed']} τ {TAU}", (h["mean_loops"], h["illegal"]), xytext=(6, 6), textcoords="offset points", fontsize=7)
-    ax.set_xlabel("mean loops per frame")
-    ax.set_ylabel("illegal one-step frames")
-    ax.set_title("open: fixed depth 1-8   filled: energy halting, τ sweep", fontsize=8, loc="left")
-    fig.tight_layout()
-    fig.savefig(SHOTS / "halt.png")
+    es = [r["arms"]["E"] for r in runs if "E" in r["arms"]]
+    top = max(1 - e["depths"]["1"]["legal"][0] for e in es) * 1.15
+    img, d, f, xy = chart(1280, 560, (0.5, 8.5), (0, top), "mean loops per frame",
+                          "illegal", "open: fixed depth 1-8 (arm D)   filled: energy halting, tau sweep (arm E)   one row per seed")
+    for x in range(1, 9):
+        d.text(xy(x, 0), str(x), font=f, fill=200, anchor="mt")
+    for e in es:
+        for k in range(1, 9):
+            dot(d, xy(k, 1 - e["depths"][str(k)]["legal"][0]), False)
+        for sw in e["tau_sweep"]:
+            dot(d, xy(sw["mean_loops"], sw["illegal"]), True, 4)
+    img.save(SHOTS / "halt.png", optimize=True)
 
-    fig, ax = dots(6.4, 3.0)
-    names = [("A", "1", "A one-pass"), ("B", "1", "B nearest-16"), ("C", "8", "C std x8"), ("E", "8", "D prox x8"), ("E", "halt", "E lucid")]
+    names = [("A", "1", "A one-pass"), ("B", "1", "B nearest-16"), ("C", "8", "C std x8"), ("E", "1", "D prox x1"),
+             ("E", "8", "D prox x8"), ("E", "halt", "E lucid")]
+    img, d, f, xy = chart(1280, 560, (-0.5, len(names) - 0.5), (0, 1), "", "legal",
+                          "one-step legal frames, 3 seeds   open: quiet steps   filled: random steps   bars: 95% bootstrap CI")
     for i, (arm, depth, label) in enumerate(names):
+        d.text((xy(i, 0)[0], xy(i, 0)[1] + 12), label, font=f, fill=200, anchor="mt")
         for j, r in enumerate(runs):
             a = r["arms"].get(arm)
             if not a:
@@ -88,15 +97,10 @@ def plots():
             v = a["halt"] if depth == "halt" else a["depths"][depth]
             for k, key in enumerate(("legal_quiet", "legal_spawn")):
                 m, lo, hi = v[key]
-                x = i + (k - 0.5) * 0.3 + (j - 1) * 0.06
-                ax.plot([x, x], [lo, hi], color="white", lw=1)
-                ax.plot(x, m, "o", color="white", ms=4, mfc="white" if k else "none")
-    ax.set_xticks(range(len(names)), [n[2] for n in names])
-    ax.set_ylim(-0.02, 1.02)
-    ax.set_ylabel("one-step legal frames")
-    ax.set_title("open: quiet steps   filled: random steps (spawn, respawn)   bars: 95% bootstrap CI per seed", fontsize=8, loc="left")
-    fig.tight_layout()
-    fig.savefig(SHOTS / "legal.png")
+                x = i + (k - 0.5) * 0.3 + (j - 1) * 0.07
+                d.line([xy(x, lo), xy(x, hi)], fill=255)
+                dot(d, xy(x, m), bool(k), 4)
+    img.save(SHOTS / "legal.png", optimize=True)
 
 
 if __name__ == "__main__":
