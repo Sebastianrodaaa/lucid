@@ -9,7 +9,7 @@ setup:
 test:
 	$(PY) test_lucid.py
 play:
-	sha256sum -c checkpoints/SHA256SUMS
+	(cd checkpoints && sha256sum -c SHA256SUMS)
 	(sleep 2; python3 -m webbrowser http://127.0.0.1:$(PORT)/) &
 	$(PY) -m app.server --port $(PORT)
 replay:
