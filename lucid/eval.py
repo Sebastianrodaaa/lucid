@@ -185,10 +185,11 @@ def evaluate(prefix, seed, arms, rollouts=50):
     count[hit] = data["count"].numpy()[data["owner"].numpy()[hit]]
     spawn = count > 1
     res = dict(prefix=prefix, seed=seed, tau=TAU, test=dict(seed=TEST_SEED, transitions=TEST_N, random_steps=int(spawn.sum())), arms={})
+    missing = [str(ROOT / f"runs/{prefix}-{seed}-{a}.pt") for a in arms if not (ROOT / f"runs/{prefix}-{seed}-{a}.pt").exists()]
+    if missing:  # never replace a saved result with a partial one; pass --arms for a partial evaluation
+        raise SystemExit(f"missing checkpoints: {', '.join(missing)}")
     for arm in arms:
         path = ROOT / f"runs/{prefix}-{seed}-{arm}.pt"
-        if not path.exists():
-            continue
         model, meta = load_model(path), json.loads(path.with_suffix(".json").read_text())
         torch.set_num_threads(8)
         ok, energy = one_step(model, arm, data, seed)
@@ -256,7 +257,7 @@ def rows(runs):
         lat = [r["latency"].get(depth) for r in rs]
         loops = [r["halt"]["mean_loops"] if depth == "halt" else int(depth) for r in rs]
         out.append([label, _cell([o["legal"][0] for o in one if o]), _cell([o["legal_spawn"][0] for o in one if o]),
-                    _cell([c["legal"][0] for c in cl if c]), _cell([r["spawn_8"]["column_tv"] for r in rs]) if depth in ("1", "halt") or arm == "C" else "-",
+                    _cell([c["legal"][0] for c in cl if c]), _cell([r["spawn_8"]["column_tv"] for r in rs]) if arm in ("A", "B") or depth == "halt" else "-",  # spawn rollouts use each arm's own policy
                     _cell(loops, 2), _cell([x["median_ms"] for x in lat if x], 1), _cell([x["fps"] for x in lat if x], 0)])
     o = [r["oracle"] for r in runs if "oracle" in r]
     if o:

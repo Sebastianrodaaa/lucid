@@ -2,6 +2,7 @@
 E looped proximal target plus energy head (its trunk at fixed depth is arm D)."""
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -24,7 +25,9 @@ def load(n, seed):
         fut = np.stack([np.concatenate([f, np.repeat(f[:1], K - len(f), 0)]) for f in d["futures"]])
         count = np.array([len(f) for f in d["futures"]])
         path.parent.mkdir(exist_ok=True)
-        np.savez(path, prev=d["prev"], cur=d["cur"], act=d["act"], next=d["next"], owner=d["owner"], futures=fut, count=count)
+        tmp = path.with_suffix(f".{os.getpid()}.npz")  # publish atomically: two training lanes may build the same cache
+        np.savez(tmp, prev=d["prev"], cur=d["cur"], act=d["act"], next=d["next"], owner=d["owner"], futures=fut, count=count)
+        os.replace(tmp, path)
     return {k: torch.from_numpy(v) for k, v in np.load(path).items()}
 
 

@@ -226,7 +226,7 @@ function resultsView() {
 async function boot() {
   try { results = await (await fetch('/api/results')).json(); } catch (e) { results = null; }
   if (q.get('view') === 'results') return resultsView();
-  if (q.has('replay')) return replay(q.get('replay'));
+  if (q.has('replay')) return replay(q.get('replay').replace(/[^\w-]/g, ''));  // the name lands in innerHTML: keep it a plain file stem
   live();
 }
 
